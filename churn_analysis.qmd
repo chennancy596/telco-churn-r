@@ -1,16 +1,5 @@
 ---
-title: "Telco Customer Churn Analysis"
-subtitle: "Who leaves, why, and how to keep them"
-author: "Nanxi Chen"
-date: today
-format:
-  html:
-    toc: true
-    code-fold: true
-    embed-resources: true
-execute:
-  warning: false
-  message: false
+---
 ---
 
 ## 1. Business Question
@@ -123,6 +112,68 @@ churn_rate_by(churn, PaymentMethod) |> arrange(desc(churn_rate))
 churn_rate_by(churn, InternetService) |> arrange(desc(churn_rate))
 ```
 
+### Checking the patterns with SQL
+
+The same patterns can be reproduced with SQL queries on an in-memory DuckDB database.
+
+```{r}
+library(DBI)
+con <- dbConnect(duckdb::duckdb(shared_home = FALSE))
+duckdb::duckdb_register(con, "customers", churn)
+```
+
+**Churn rate by contract type**
+
+```{r}
+dbGetQuery(con, "
+  SELECT Contract,
+         COUNT(*) AS customers,
+         ROUND(100 * AVG(CASE WHEN Churn = 'Yes' THEN 1 ELSE 0 END), 1) AS churn_rate_pct
+  FROM customers
+  GROUP BY Contract
+  ORDER BY churn_rate_pct DESC
+")
+```
+
+**Churn rate by tenure group**
+
+```{r}
+dbGetQuery(con, "
+  SELECT CASE
+           WHEN tenure <= 12 THEN '0-12 months'
+           WHEN tenure <= 24 THEN '13-24 months'
+           WHEN tenure <= 48 THEN '25-48 months'
+           ELSE '49+ months'
+         END AS tenure_group,
+         COUNT(*) AS customers,
+         ROUND(100 * AVG(CASE WHEN Churn = 'Yes' THEN 1 ELSE 0 END), 1) AS churn_rate_pct
+  FROM customers
+  GROUP BY tenure_group
+  ORDER BY tenure_group
+")
+```
+
+**Highest-risk customer segments (at least 100 customers)**
+
+```{r}
+dbGetQuery(con, "
+  SELECT Contract, PaymentMethod, InternetService,
+         COUNT(*) AS customers,
+         ROUND(100 * AVG(CASE WHEN Churn = 'Yes' THEN 1 ELSE 0 END), 1) AS churn_rate_pct
+  FROM customers
+  GROUP BY Contract, PaymentMethod, InternetService
+  HAVING COUNT(*) >= 100
+  ORDER BY churn_rate_pct DESC
+  LIMIT 5
+")
+```
+
+```{r}
+dbDisconnect(con, shutdown = TRUE)
+```
+
+The riskiest segment is month-to-month customers who pay by electronic check and use fiber optic internet: 1,307 customers with a churn rate of 60.4%, more than twice the overall rate.
+
 ## 4. Train/Test Split
 
 The models are built on 70% of customers and evaluated on the remaining 30%, which they have never seen.
@@ -203,8 +254,9 @@ bind_rows(
 
 1.  **Contract type:** Month-to-month customers churn at 42.7%, compared with 2.8% for two-year contracts.
 2.  **Tenure:** Customers in their first year churn at 47.7%, the highest of any tenure group.
-3.  **Charges:** Churners pay higher monthly charges (median \$79.6 vs \$64.4).
-4.  **Model:** Lowering the threshold from 0.5 to 0.3 raises the random forest's recall from 0.49 to 0.78, at the cost of precision falling from 0.64 to 0.52.
+3.  **Highest-risk segment (SQL):** month-to-month customers who pay by electronic check and use fiber optic internet churn at 60.4% (1,307 customers), more than twice the overall rate.
+4.  **Charges:** Churners pay higher monthly charges (median \$79.6 vs \$64.4), but the effect is not significant once contract type and other factors are controlled for (p = 0.30).
+5.  **Model:** Lowering the threshold from 0.5 to 0.3 raises the random forest's recall from 0.49 to 0.78, at the cost of precision falling from 0.64 to 0.52.
 
 ## 9. Recommendations
 
