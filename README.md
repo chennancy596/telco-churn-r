@@ -1,6 +1,6 @@
 # Telco Customer Churn Analysis in R
 
-An end-to-end analysis of customer churn for a telecom company: data cleaning, visualization, logistic regression and random forest modelling, ending with retention recommendations.
+An end-to-end analysis of customer churn for a telecom company: data cleaning, SQL queries, visualization, logistic regression and random forest modelling, ending with retention recommendations.
 
 **Full report:** [View the HTML report](https://chennancy596.github.io/telco-churn-r/churn_analysis.html)
 
@@ -13,6 +13,7 @@ About a quarter of the 7,032 customers in this dataset (26.6%) left the company 
 - **Contract type:** month-to-month customers churn at 42.7%, compared with 2.8% for two-year contracts.
 - **Tenure:** customers in their first year churn at 47.7%, the highest of any tenure group.
 - **Payment method:** customers paying by electronic check churn at 45.3%, versus about 15–17% for automatic payments.
+- **Highest-risk segment (SQL):** month-to-month customers who pay by electronic check and use fiber optic internet churn at 60.4% (1,307 customers), more than twice the overall rate.
 - **Model:** lowering the classification threshold from 0.5 to 0.3 raises the random forest's recall from 0.49 to 0.78, so the retention team catches far more churners at the cost of more false alarms.
 
 ## Recommendations
@@ -28,6 +29,7 @@ About a quarter of the 7,032 customers in this dataset (26.6%) left the company 
 - Visualization with `ggplot2`
 - Logistic regression (odds ratios) with `glm` and `broom`
 - Random forest with `ranger`
+- SQL queries with `DBI` and `duckdb` (GROUP BY, CASE WHEN, HAVING)
 - Model comparison on a 30% hold-out set using accuracy, recall and precision
 - Report written in Quarto
 
